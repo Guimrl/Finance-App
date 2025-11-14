@@ -1,0 +1,9 @@
+node
+ts
+amqplib (rabbitMQ)
+docker
+express
+socketio
+mongoose
+vue ou react?
+axios
