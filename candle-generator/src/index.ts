@@ -6,30 +6,25 @@ import createMessageChanel from './messages/chanel'
 
 config()
 
+const PERIOD_INTERVAL = Period.ONE_MINUTE
+
 const generateCandles = async () => {
   const messageChannel = await createMessageChanel()
-  if (!messageChannel) return
+  if (!messageChannel) {
+    console.error('Failed to connect to RabbitMQ. Generator shutting down.')
+    return
+  }
 
   console.log('Starting Candle Generator (WebSocket Mode)')
 
   let candle = new Candle('BTC', new Date())
-  let lastMinute = new Date().getMinutes()
 
   const ws = new WebSocket(process.env.BINANCE_WEBSOCKET)
 
   ws.on('open', () => {
     console.log('Connected to Binance WebSocket')
-  })
 
-  ws.on('message', msg => {
-    const data = JSON.parse(msg.toString())
-    console.log('data é', data)
-    const price = parseFloat(data.p)
-    candle.addValue(price)
-
-    const currentMinute = new Date().getMinutes()
-
-    if (currentMinute !== lastMinute) {
+    setInterval(() => {
       candle.closeCandle()
       console.log('Candle closed:', candle.toSimpleObject())
 
@@ -38,8 +33,14 @@ const generateCandles = async () => {
       console.log('Candle sent to queue')
 
       candle = new Candle('BTC', new Date())
-      lastMinute = currentMinute
-    }
+      console.log('New candle started.')
+    }, PERIOD_INTERVAL)
+  })
+
+  ws.on('message', msg => {
+    const data = JSON.parse(msg.toString())
+    const price = parseFloat(data.p)
+    candle.addValue(price)
   })
 
   ws.on('error', err => {

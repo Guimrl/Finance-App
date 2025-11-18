@@ -1,0 +1,78 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: "rabbitmq"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "admin"
+      RABBITMQ_DEFAULT_PASS: "admin"
+    volumes:
+      - ./data_volumes/rabbitmq:/var/lib/rabbitmq/
+      - ./rabbitmq_logs:/var/log/rabbitmq/
+    networks:
+      - crypto-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: "mongo:latest"
+    container_name: "mongodb"
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data_volumes/mongodb:/data/db
+    networks:
+      - crypto-net
+
+  candle-api:
+    image: node:22-alpine
+    container_name: "candle-api"
+    working_dir: /app
+    volumes:
+      - ./candle-api:/app
+      - /app/node_modules
+    command: sh -c "yarn install && yarn dev"
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      QUEUE_NAME: candles
+      AMQP_SERVER: amqp://admin:admin@rabbitmq:5672
+      SOCKET_EVENT_NAME: newCandle
+      SOCKET_CLIENT_SERVER: http://localhost:8080
+      MONGODB_CONNECTION_URL: mongodb://mongodb:27017/candles
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+    networks:
+      - crypto-net
+
+  candle-generator:
+    image: node:22-alpine
+    container_name: "candle-generator"
+    working_dir: /app
+    volumes:
+      - ./candle-generator:/app
+      - /app/node_modules
+    command: sh -c "yarn install && yarn start"
+    environment:
+      PRICES_API: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
+      BINANCE_WEBSOCKET: wss://stream.binance.com:9443/ws/btcusdt@trade
+      QUEUE_NAME: candles
+      AMQP_SERVER: amqp://admin:admin@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - crypto-net
+
+networks:
+  crypto-net:
+    driver: bridge
