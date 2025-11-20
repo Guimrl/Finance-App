@@ -1,9 +1,11 @@
-node
-ts
+Yarn
+Node
+TS
 amqplib (rabbitMQ)
-docker
-express
-socketio
-mongoose
-vue ou react?
-axios
+Docker
+Express
+Socketio
+Mongoose
+React
+Axios
+Apexcharts
