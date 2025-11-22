@@ -2,17 +2,17 @@ import { useEffect, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
 import axios from 'axios'
 import io from 'socket.io-client'
-import styled from 'styled-components'
-
-interface Candle {
-  currency: string
-  finalDateTime: string
-  open: number
-  close: number
-  high: number
-  low: number
-  color: string
-}
+import styled, { css, keyframes } from 'styled-components'
+import type { Candle } from './Interfaces/Candles'
+import {
+  Container,
+  DashboardWrapper,
+  Header,
+  IconWrapper,
+  StatusIndicator,
+  Title,
+  TitleGroup,
+} from './Components'
 
 const socket = io('http://localhost:3000', {
   transports: ['websocket'],
@@ -20,21 +20,6 @@ const socket = io('http://localhost:3000', {
   reconnectionAttempts: 10,
   reconnectionDelay: 2000,
 })
-
-const Container = styled('div')`
-  min-height: 100vh;
-  background-color: #292929;
-  color: white;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-`
-
-const DashboardWrapper = styled('div')`
-  width: 100%;
-  max-width: 1200px;
-`
 
 const App = () => {
   const [candles, setCandles] = useState<Candle[]>([])
@@ -90,7 +75,31 @@ const App = () => {
   return (
     <Container>
       <DashboardWrapper>
-        <p>{connected ? 'Conectado' : 'Desconectado'}</p>
+        <Header>
+          <TitleGroup>
+            <IconWrapper>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                />
+              </svg>
+            </IconWrapper>
+            <Title>Crypto Dashboard</Title>
+          </TitleGroup>
+
+          <StatusIndicator $connected={connected}>
+            <span className="dot"></span>
+            <span className="text">{connected ? 'Conectado em Tempo Real' : 'Desconectado'}</span>
+          </StatusIndicator>
+        </Header>
         <ReactApexChart
           options={{
             chart: {
