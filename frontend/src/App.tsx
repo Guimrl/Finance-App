@@ -2,17 +2,22 @@ import { useEffect, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
 import axios from 'axios'
 import io from 'socket.io-client'
-import styled, { css, keyframes } from 'styled-components'
 import type { Candle } from './Interfaces/Candles'
 import {
+  ChartCard,
   Container,
   DashboardWrapper,
   Header,
   IconWrapper,
+  LoadingState,
+  StatCard,
+  StatsGrid,
   StatusIndicator,
+  StatValue,
   Title,
   TitleGroup,
 } from './Components'
+import type { ApexOptions } from 'apexcharts'
 
 const socket = io('http://localhost:3000', {
   transports: ['websocket'],
@@ -71,6 +76,63 @@ const App = () => {
     }
   }, [])
 
+  const getLastPrice = () => (candles.length > 0 ? candles[candles.length - 1].close : 0)
+  const getFirstPrice = () => (candles.length > 0 ? candles[0].close : 0)
+  const isTrendUp = getLastPrice() > getFirstPrice()
+
+  const options: ApexOptions = {
+    chart: {
+      type: 'candlestick',
+      height: 350,
+      toolbar: { show: false },
+      animations: { enabled: true },
+      background: 'transparent',
+      fontFamily: 'inherit',
+    },
+    title: {
+      text: 'Bitcoin / USD (1 Minuto)',
+      align: 'left',
+      style: { color: '#fff', fontFamily: 'inherit' },
+    },
+    xaxis: {
+      type: 'datetime',
+      labels: { style: { colors: '#fff', fontFamily: 'inherit' } },
+      axisBorder: { color: '#374151' },
+      axisTicks: { color: '#374151' },
+    },
+    yaxis: {
+      tooltip: { enabled: true },
+      labels: {
+        style: { colors: '#fff', fontFamily: 'inherit' },
+        formatter: value => `$${value.toFixed(2)}`,
+      },
+    },
+    grid: {
+      borderColor: '#374151',
+    },
+    theme: {
+      mode: 'dark',
+    },
+    plotOptions: {
+      candlestick: {
+        colors: {
+          upward: '#22c55e',
+          downward: '#ef4444',
+        },
+      },
+    },
+  }
+
+  const series = [
+    {
+      name: 'candle',
+      data: candles.map(candle => ({
+        x: new Date(candle.finalDateTime),
+        y: [candle.open, candle.high, candle.low, candle.close],
+      })),
+    },
+  ]
+
   console.log('candles', candles)
   return (
     <Container>
@@ -100,58 +162,35 @@ const App = () => {
             <span className="text">{connected ? 'Conectado em Tempo Real' : 'Desconectado'}</span>
           </StatusIndicator>
         </Header>
-        <ReactApexChart
-          options={{
-            chart: {
-              type: 'candlestick',
-              height: 350,
-              toolbar: { show: false },
-              animations: { enabled: true },
-              background: 'transparent',
-            },
-            title: {
-              text: 'Bitcoin / USD (1 Minuto)',
-              align: 'left',
-            },
-            xaxis: {
-              type: 'datetime',
-              axisBorder: { color: '#374151' },
-              axisTicks: { color: '#374151' },
-            },
-            yaxis: {
-              tooltip: { enabled: true },
-              labels: {
-                style: { colors: '#fff', fontFamily: 'inherit' },
-                formatter: value => `$${value.toFixed(2)}`,
-              },
-            },
-            grid: {
-              borderColor: '#374151',
-            },
-            theme: {
-              mode: 'dark',
-            },
-            plotOptions: {
-              candlestick: {
-                colors: {
-                  upward: '#22c55e',
-                  downward: '#ef4444',
-                },
-              },
-            },
-          }}
-          series={[
-            {
-              name: 'candle',
-              data: candles.map(candle => ({
-                x: new Date(candle.finalDateTime),
-                y: [candle.open, candle.high, candle.low, candle.close],
-              })),
-            },
-          ]}
-          type="candlestick"
-          height={500}
-        />
+        <ChartCard>
+          {candles.length > 0 ? (
+            <ReactApexChart options={options} series={series} type="candlestick" height={500} />
+          ) : (
+            <LoadingState>Carregando dados do mercado...</LoadingState>
+          )}
+        </ChartCard>
+        <StatsGrid>
+          <StatCard>
+            <h3>Último Preço</h3>
+            <StatValue>
+              {candles.length > 0 ? `$${candles[candles.length - 1].close.toFixed(2)}` : '---'}
+            </StatValue>
+          </StatCard>
+
+          <StatCard>
+            <h3>Tendência (30 min)</h3>
+            <StatValue
+              $color={candles.length > 0 ? (isTrendUp ? '#22c55e' : '#ef4444') : undefined}
+            >
+              {candles.length > 0 ? (isTrendUp ? 'Alta ↗' : 'Baixa ↘') : '---'}
+            </StatValue>
+          </StatCard>
+
+          <StatCard>
+            <h3>Par</h3>
+            <StatValue $color="#eab308">BTC / USD</StatValue>
+          </StatCard>
+        </StatsGrid>
       </DashboardWrapper>
     </Container>
   )
